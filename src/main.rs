@@ -1,55 +1,66 @@
-use std::{
-    collections::BTreeSet,
-    fs::File,
-    io::{Write, BufRead, BufReader},
-};
+mod fetch;
+mod rmd;
+mod write;
+
+use rmd::remove_duplicates;
+use write::write;
+
+// for cli-args
+use seahorse::{App, Flag, FlagType};
+use std::env;
 
 fn main() {
-    let mut body: String = String::new();
-    let urls = vec!("https://badmojr.github.io/1Hosts/Pro/hosts.txt",
-                "https://hosts.oisd.nl",
-                "https://block.energized.pro/ultimate/formats/hosts",
-                "https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt",
-                "https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt",
-                );
+    let args: Vec<String> = env::args().collect();
 
-    let mut n: u8 = 1;
-    let mut file = File::create("hosts").expect("Error encountered while creating a file");
-    for uri in urls.iter() {
-        println!("{}) {}", n, uri);
-        // fetch url
-        fetch(uri, &mut body);
-        // write to file
-        file.write_all(body.as_bytes());
-        n += 1;
-    }
+    let app = App::new(env!("CARGO_PKG_NAME"))
+        .description(env!("CARGO_PKG_DESCRIPTION"))
+        .version(env!("CARGO_PKG_VERSION"))
+        .usage(format!("{} [args]", env!("CARGO_PKG_NAME")))
+        .action(|c| {
+            // set default urls
+            let urls = match c.string_flag("urls") {
+                Ok(f) => f,
+                _ => "https://badmojr.github.io/1Hosts/Pro/hosts.txt https://hosts.oisd.nl https://block.energized.pro/ultimate/formats/hosts https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt".to_string(),
+            };
 
-    // remove duplicates
-    println!("Removing duplicate lines");
-    // open file
-    let file = File::open("hosts").expect("Couldn't open file");
-    let reader = BufReader::new(file);
-    // read all uniq lines
-    let lines: BTreeSet<_> = reader.lines()
-        .map(|l| l.expect("Couldn't read a line"))
-        .collect();
+            // set default output filename
+            let filename = match c.string_flag("output") {
+                Ok(f) => f,
+                _ => "hosts".to_string(),
+            };
 
-    let mut file = File::create("hosts").expect("Error encountered while creating a file");
-    for line in lines {
-        // write uniq line
-        file.write_all(line.as_bytes())
-            .expect("Couldn't write to file");
+            let rm_duplicate_lines: bool = c.bool_flag("rm_duplicate_lines");
 
-        // write newline(\n)
-        file.write_all(b"\n").expect("Couldn't write to file")
-    }
+            // give info
+            println!("Filename: {}, Remove Duplicates: {}", filename, rm_duplicate_lines);
 
-    println!("Your hosts file is ready!")
-}
+            // fetch urls and write to file
+            write(urls, &filename);
 
-#[tokio::main]
-async fn fetch(uri: &str, body: &mut String) -> Result<(), reqwest::Error> {
-    let resp = reqwest::get(uri).await?;
-    *body = resp.text().await?;
-    Ok(())
+            // remove duplicates if -rmd flag is used
+            if rm_duplicate_lines == true {
+                println!("Removing duplicate lines");
+                remove_duplicates(&filename);
+            }
+
+            println!("Your hosts file is ready!")
+        })
+        // flags
+        .flag(
+            Flag::new("urls", FlagType::String)
+            .description("hosts urls(seperate them with spaces!)")
+            .alias("u")
+            )
+        .flag(
+            Flag::new("output", FlagType::String)
+            .description("name of the output file")
+            .alias("o")
+            )
+        .flag(
+            Flag::new("rm_duplicate_lines", FlagType::Bool)
+            .description("remove duplicate lines from the new hosts file")
+            .alias("rmd")
+        );
+
+    app.run(args);
 }

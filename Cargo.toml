@@ -1,10 +1,24 @@
 [package]
 name = "hc-rs"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "create hosts file"
+repository = "https://github.com/XDream8/hc-rs"
+authors = ["XDream8 <WolfsDream@proton.me>"]
+readme = "README.md"
+license = "MIT"
 
 [dependencies]
 reqwest = "0.11"
 tokio = { version = "1", features = ["full"] }
+seahorse = "2.1"
+
+[profile.release]
+lto = "thin"
+
+[profile.optimized]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+strip = true
+opt-level = 3
