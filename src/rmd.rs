@@ -24,6 +24,6 @@ pub fn remove_duplicates(filename: &str) {
             .expect("Couldn't write to file");
 
         // write newline(\n)
-        file.write_all(b"\n").expect("Couldn't write to file")
+        file.write_all(b"\n").expect("Couldn't write to file");
     }
 }

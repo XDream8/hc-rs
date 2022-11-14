@@ -10,6 +10,7 @@ this is a **WIP**
 - [X] merging hosts files
 - [X] removing duplicate lines
 - [X] cli options
+- [X] colored output messages
 - [ ] configuration file
 - [ ] replace with /etc/hosts(i think this should be done manually though)
 

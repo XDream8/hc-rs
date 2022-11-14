@@ -4,6 +4,9 @@ use crate::fetch::fetch;
 // for file operations
 use std::{fs::File, io::Write};
 
+// colored output
+use colored::*;
+
 pub fn write(urls: String, filename: &str) {
     let mut body: String = String::new();
 
@@ -11,7 +14,7 @@ pub fn write(urls: String, filename: &str) {
     let mut file = File::create(filename).expect("Error encountered while creating a file");
 
     for uri in urls.split(" ") {
-        println!("{}) {}", n, uri);
+        println!("{}) {}", format!("{}", n).cyan().bold(), uri.yellow());
         // Fetch url
         match fetch(&uri, &mut body) {
             Ok(f) => f,
