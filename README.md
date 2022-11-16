@@ -25,13 +25,14 @@ $ ./target/optimized/hc-rs
 ## usage
 ```sh
 $ hc-rs -h
+$ hc-rs <urls> <flags>
 ```
 
 ### creating a hosts file
-- pass **space seperated urls** to --urls(-u) flag
+- pass **urls** directly to hc-rs
 - you can pass as much urls as you want to
 ```sh
-$ hc-rs -u "https://badmojr.github.io/1Hosts/Pro/hosts.txt https://hosts.oisd.nl"
+$ hc-rs https://badmojr.github.io/1Hosts/Pro/hosts.txt https://hosts.oisd.nl
 ```
 
 ### removing duplicate lines
@@ -49,5 +50,5 @@ $ hc-rs -o new-hosts
 
 ### aliasing in your shell config
 ```sh
-alias create-hosts='hc-rs -rmd -u "https://badmojr.github.io/1Hosts/Pro/hosts.txt https://hosts.oisd.nl"'
+alias create-hosts='hc-rs -rmd https://badmojr.github.io/1Hosts/Pro/hosts.txt https://hosts.oisd.nl'
 ```
