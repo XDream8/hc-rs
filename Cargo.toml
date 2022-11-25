@@ -1,21 +1,21 @@
 [package]
 name = "hc-rs"
 version = "0.2.0"
-edition = "2021"
-description = "create hosts file"
-repository = "https://github.com/XDream8/hc-rs"
 authors = ["XDream8 <WolfsDream@proton.me>"]
-readme = "README.md"
+edition = "2021"
 license = "MIT"
+readme = "README.md"
+repository = "https://github.com/XDream8/hc-rs"
+description = "create hosts file"
 
 [features]
 dumb_terminal = ["colored/no-color"]
 
 [dependencies]
-reqwest = "0.11"
-tokio = { version = "1", features = ["full"] }
-seahorse = "2.1"
 colored = "2"
+reqwest = "0.11"
+seahorse = "2.1"
+tokio = { version = "1", features = ["full"] }
 
 [profile.release]
 lto = "thin"
