@@ -77,36 +77,47 @@ fn action(c: &Context) {
         format!("{}", rm_duplicate_lines).yellow()
     );
 
-    // fetch urls and write to file
-    let mut n: u8 = 1;
+    std::thread::scope(|s| {
+        // create file
+        let _file = File::create(&filename).expect("Error encountered while creating a file");
 
-    // create file
-    let mut file = File::create(&filename).expect("Error encountered while creating a file");
+        let fname = &filename;
 
-    // this is where we store fetched content
-    let mut body: String = String::new();
+        // info
+        println!("{}", "Starting downloads(threaded)".blue().bold());
 
-    for uri in urls {
-        println!("{}) {}", format!("{}", n).cyan().bold(), uri.yellow());
+        for uri in urls.iter() {
+            s.spawn(move || {
+                // this is where we store fetched content
+                let mut body: String = String::new();
 
-        // Fetch url
-        match fetch(&uri, &mut body) {
-            Ok(f) => f,
-            Err(e) => {
-                println!("Couldn't fetch url!\n{:?}", e);
-            }
+                // Fetch url
+                match fetch(&uri, &mut body) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        println!("Couldn't fetch url!\n{:?}", e);
+                    }
+                }
+
+                println!(
+                    "{} ({}) {}",
+                    "fetched".green().bold(),
+                    uri.yellow(),
+                    "successfully".green().bold()
+                );
+
+                let f = File::options().append(true).open(&fname);
+
+                // write to file
+                match f.expect("error").write_all(body.as_bytes()) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        println!("Couldn't write fetched content to file!\n{:?}", e);
+                    }
+                }
+            });
         }
-
-        // write to file
-        match file.write_all(body.as_bytes()) {
-            Ok(f) => f,
-            Err(e) => {
-                println!("Couldn't write fetched content to file!\n{:?}", e);
-            }
-        }
-
-        n += 1;
-    }
+    });
 
     // remove duplicates if -rmd flag is used
     if rm_duplicate_lines == true {
