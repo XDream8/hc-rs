@@ -32,12 +32,20 @@ fn main() {
             Flag::new("rm_duplicate_lines", FlagType::Bool)
                 .description("remove duplicate lines from the new hosts file")
                 .alias("rmd"),
+        )
+        .flag(
+            Flag::new("minimal", FlagType::Bool)
+                .description("create a minimal hosts file")
+                .alias("m"),
         );
 
     app.run(args);
 }
 
 fn action(c: &Context) {
+    // --minimal,-m
+    let minimal: bool = c.bool_flag("minimal");
+
     // urls
     let mut urls: Vec<String> = vec![];
 
@@ -46,19 +54,30 @@ fn action(c: &Context) {
         urls.push(format!("{}", url).to_owned())
     }
 
+    let default_hosts: Vec<&str> = vec![
+        "https://badmojr.github.io/1Hosts/Pro/hosts.txt",
+        "https://hosts.oisd.nl",
+        "https://block.energized.pro/ultimate/formats/hosts",
+        "https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt",
+        "https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt",
+    ];
+
+    let minimal_hosts: Vec<&str> = vec![
+        "https://badmojr.github.io/1Hosts/Pro/hosts.txt",
+        "https://block.energized.pro/ultimate/formats/hosts",
+    ];
+
     // set default urls
     if urls.is_empty() {
-        urls.push("https://badmojr.github.io/1Hosts/Pro/hosts.txt".to_owned());
-        urls.push("https://hosts.oisd.nl".to_owned());
-        urls.push("https://block.energized.pro/ultimate/formats/hosts".to_owned());
-        urls.push(
-            "https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt"
-                .to_owned(),
-        );
-        urls.push(
-            "https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt"
-                .to_owned(),
-        );
+        if minimal {
+            minimal_hosts
+                .iter()
+                .for_each(|host| urls.push(host.to_string()));
+        } else {
+            default_hosts
+                .iter()
+                .for_each(|host| urls.push(host.to_string()));
+        }
     }
 
     // set default output filename
@@ -91,28 +110,31 @@ fn action(c: &Context) {
                 // this is where we store fetched content
                 let mut body: String = String::new();
 
-                // Fetch url
+                // Fetch url and store the fetched content in body
                 match fetch(&uri, &mut body) {
                     Ok(f) => f,
                     Err(e) => {
-                        println!("Couldn't fetch url!\n{:?}", e);
+                        eprintln!("Couldn't fetch url!\n{:?}", e);
                     }
                 }
 
-                println!(
-                    "{} ({}) {}",
-                    "fetched".green().bold(),
-                    uri.yellow(),
-                    "successfully".green().bold()
-                );
+                // if body is not empty write to file
+                if !body.is_empty() {
+                    println!(
+                        "{} ({}) {}",
+                        "fetched".green().bold(),
+                        uri.yellow(),
+                        "successfully".green().bold()
+                    );
 
-                let f = File::options().append(true).open(&fname);
+                    let f = File::options().append(true).open(&fname);
 
-                // write to file
-                match f.expect("error").write_all(body.as_bytes()) {
-                    Ok(f) => f,
-                    Err(e) => {
-                        println!("Couldn't write fetched content to file!\n{:?}", e);
+                    // write to file
+                    match f.expect("error").write_all(body.as_bytes()) {
+                        Ok(f) => f,
+                        Err(e) => {
+                            eprintln!("Couldn't write fetched content to file!\n{:?}", e);
+                        }
                     }
                 }
             });
