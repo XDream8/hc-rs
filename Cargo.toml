@@ -1,6 +1,6 @@
 [package]
 name = "hc-rs"
-version = "0.3.1"
+version = "0.3.2"
 authors = ["XDream8 <WolfsDream@proton.me>"]
 edition = "2021"
 license = "MIT"
@@ -13,6 +13,7 @@ dumb_terminal = ["colored/no-color"]
 
 [dependencies]
 colored = "2"
+once_cell = "1.17.0"
 reqwest = "0.11"
 seahorse = "2.1"
 tokio = { version = "1", features = ["full"] }

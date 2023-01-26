@@ -1,11 +1,11 @@
-use reqwest;
+use crate::HTTP_CLIENT;
 
 // colored output
 use colored::*;
 
 #[tokio::main]
 pub async fn fetch(uri: &str, body: &mut String) -> Result<(), reqwest::Error> {
-    let resp = reqwest::get(uri).await?;
+    let resp = HTTP_CLIENT.get(uri).send().await?;
     if resp.status() != 200 {
         eprintln!("{} ({}) {}: {}",
             "fetching".red().bold(),

@@ -14,6 +14,10 @@ use std::env;
 // colored output
 use colored::*;
 
+use once_cell::sync::Lazy;
+
+static HTTP_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| reqwest::Client::new());
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
