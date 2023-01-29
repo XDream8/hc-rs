@@ -16,7 +16,8 @@ use colored::*;
 
 use once_cell::sync::Lazy;
 
-static HTTP_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| reqwest::Client::new());
+static HTTP_CLIENT: Lazy<reqwest::Client> =
+    Lazy::new(|| reqwest::Client::builder().gzip(true).build().unwrap());
 
 fn main() {
     let args: Vec<String> = env::args().collect();
