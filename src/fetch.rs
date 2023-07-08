@@ -1,21 +1,15 @@
 use crate::HTTP_CLIENT;
 
-// colored output
-use colored::*;
-
-#[tokio::main]
-pub async fn fetch(uri: &str, body: &mut String) -> Result<(), reqwest::Error> {
-    let resp = HTTP_CLIENT.get(uri).send().await?;
+pub fn fetch(uri: &str) -> Result<String, ureq::Error> {
+    let resp = HTTP_CLIENT.get(uri).call()?;
     if resp.status() != 200 {
-        eprintln!("{} ({}) {}: {}",
-            "fetching".red().bold(),
-            uri.yellow(),
-            "failed".red().bold(),
-            format!("{}", resp.status()).red().bold(),
-        );
+
     }
     else {
-        *body = resp.text().await?;
+	let mut body: String = String::new();
+	resp.into_reader().read_to_string(&mut body)?;
+        return Ok(body);
     }
-    Ok(())
+
+    Ok(String::new())
 }

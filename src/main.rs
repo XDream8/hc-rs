@@ -16,8 +16,15 @@ use colored::*;
 
 use once_cell::sync::Lazy;
 
-static HTTP_CLIENT: Lazy<reqwest::Client> =
-    Lazy::new(|| reqwest::Client::builder().gzip(true).build().unwrap());
+// http client
+use ureq::{Agent, AgentBuilder};
+use std::time::Duration;
+
+// reusable lazy initialized HTTP CLIENT
+pub static HTTP_CLIENT: Lazy<Agent> = Lazy::new(|| AgentBuilder::new()
+						.timeout_read(Duration::from_secs(10))
+						.timeout_write(Duration::from_secs(10))
+						.build());
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -62,14 +69,12 @@ fn action(c: &Context) {
     let default_hosts: Vec<&str> = vec![
         "https://badmojr.github.io/1Hosts/Pro/hosts.txt",
         "https://hosts.oisd.nl",
-        "https://block.energized.pro/ultimate/formats/hosts",
         "https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt",
         "https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt",
     ];
 
     let minimal_hosts: Vec<&str> = vec![
         "https://badmojr.github.io/1Hosts/Pro/hosts.txt",
-        "https://block.energized.pro/ultimate/formats/hosts",
     ];
 
     // set default urls
@@ -96,8 +101,9 @@ fn action(c: &Context) {
 
     // give info
     println!(
-        "Filename: {}, Remove Duplicates: {}",
+        "Filename: {}\nMinimal: {}\nRemove Duplicates: {}",
         filename.blue(),
+	format!("{}", minimal).yellow(),
         format!("{}", rm_duplicate_lines).yellow()
     );
 
@@ -113,15 +119,18 @@ fn action(c: &Context) {
         for uri in urls.iter() {
             s.spawn(move || {
                 // this is where we store fetched content
-                let mut body: String = String::new();
-
-                // Fetch url and store the fetched content in body
-                match fetch(&uri, &mut body) {
-                    Ok(f) => f,
-                    Err(e) => {
-                        eprintln!("Couldn't fetch url!\n{:?}", e);
-                    }
-                }
+                let body: String = match fetch(&uri) {
+		    Ok(f) => f,
+		    Err(e) => {
+			eprintln!("{} ({}) {}: {}",
+				  "fetching".red().bold(),
+				  uri.yellow(),
+				  "failed".red().bold(),
+				  format!("{}", e).red().bold(),
+			);
+			String::new()
+		    }
+		};
 
                 // if body is not empty write to file
                 if !body.is_empty() {
@@ -147,9 +156,12 @@ fn action(c: &Context) {
     });
 
     // remove duplicates if -rmd flag is used
-    if rm_duplicate_lines == true {
-        println!("{}", "Removing duplicate lines".blue());
-        remove_duplicates(&filename);
+    if rm_duplicate_lines == true && urls.len() == 1 {
+	println!("{}", "We only fetched 1 hosts file, no need to remove duplicates".blue());
+    }
+    else if rm_duplicate_lines == true {
+	println!("{}", "Removing duplicate lines".blue());
+	remove_duplicates(&filename);
     }
 
     println!("{}", "Your hosts file is ready!".green().bold())
