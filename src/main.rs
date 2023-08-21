@@ -20,6 +20,8 @@ use once_cell::sync::Lazy;
 use std::time::Duration;
 use ureq::{Agent, AgentBuilder};
 
+use std::process::exit;
+
 // reusable lazy initialized HTTP CLIENT
 pub static HTTP_CLIENT: Lazy<Agent> = Lazy::new(|| {
     AgentBuilder::new()
@@ -38,14 +40,19 @@ fn main() {
         .action(action)
         // flags
         .flag(
+            Flag::new("ignore-errors", FlagType::Bool)
+                .description("ignore fetching errors and don't exit")
+                .alias("i"),
+        )
+        .flag(
             Flag::new("output", FlagType::String)
                 .description("name of the output file")
                 .alias("o"),
         )
         .flag(
-            Flag::new("rm_duplicate_lines", FlagType::Bool)
+            Flag::new("remove-duplicates", FlagType::Bool)
                 .description("remove duplicate lines from the new hosts file")
-                .alias("rmd"),
+                .alias("r"),
         )
         .flag(
             Flag::new("minimal", FlagType::Bool)
@@ -79,8 +86,10 @@ fn action(c: &Context) {
     // set default output filename
     let filename: String = c.string_flag("output").unwrap_or(String::from("hosts"));
 
-    // -rmd arg
+    // -r flag
     let rm_duplicate_lines: bool = c.bool_flag("rm_duplicate_lines");
+    // -i/--ignore flag
+    let ignore_fetching_errors: bool = c.bool_flag("ignore-errors");
 
     // give info
     println!(
@@ -92,7 +101,10 @@ fn action(c: &Context) {
 
     std::thread::scope(|s| {
         // create file
-        let _file = File::create(&filename).expect("Error encountered while creating a file");
+        if let Err(err) = File::create(&filename) {
+            eprintln!("Error encountered while creating output file: {}", err);
+            exit(1);
+        }
 
         let fname: &String = &filename;
 
@@ -101,9 +113,32 @@ fn action(c: &Context) {
 
         for uri in urls.iter() {
             s.spawn(move || {
-                // this is where we store fetched content
-                let body: String = match fetch(uri) {
-                    Ok(f) => f,
+                match fetch(uri) {
+                    // if fetched body successfully
+                    Ok(body) => {
+                        println!(
+                            "{} ({}) {}",
+                            "fetched".green().bold(),
+                            uri.yellow(),
+                            "successfully".green().bold()
+                        );
+
+                        // open file as read-write(managing errors)
+                        let mut file: File = File::options()
+                            .append(true)
+                            .open(fname)
+                            .unwrap_or_else(|err| {
+                                eprintln!("Couldn't open output file as read-write: {}", err);
+                                exit(1);
+                            });
+
+                        // write to file(managing errors)
+                        if let Err(err) = file.write_all(body.as_bytes()) {
+                            eprintln!("Couldn't write fetched content to file: {}", err);
+                            exit(1);
+                        }
+                    }
+                    // manage fetching errors
                     Err(err) => {
                         eprintln!(
                             "{} ({}) {}: {}",
@@ -112,29 +147,11 @@ fn action(c: &Context) {
                             "failed".red().bold(),
                             err.to_string().red().bold(),
                         );
-                        String::new()
-                    }
-                };
-
-                // if body is not empty write to file
-                if !body.is_empty() {
-                    println!(
-                        "{} ({}) {}",
-                        "fetched".green().bold(),
-                        uri.yellow(),
-                        "successfully".green().bold()
-                    );
-
-                    let f = File::options().append(true).open(fname);
-
-                    // write to file
-                    match f.expect("error").write_all(body.as_bytes()) {
-                        Ok(f) => f,
-                        Err(e) => {
-                            eprintln!("Couldn't write fetched content to file!\n{:?}", e);
+                        if !ignore_fetching_errors {
+                            exit(1);
                         }
                     }
-                }
+                };
             });
         }
     });
@@ -147,7 +164,10 @@ fn action(c: &Context) {
         );
     } else if rm_duplicate_lines {
         println!("{}", "Removing duplicate lines".blue());
-        remove_duplicates(&filename);
+        if let Err(err) = remove_duplicates(&filename) {
+            eprintln!("Error encountered while removing duplicates: {}", err);
+            exit(1);
+        }
     }
 
     println!("{}", "Your hosts file is ready!".green().bold())
