@@ -40,7 +40,7 @@ steps:
       base_url: https://codeberg.org
       files:
         - "hc-rs-${TARGET}.tar.gz"
-        - "hosts"
+        - "hosts-*"
       file-exists: overwrite
       api_key:
         from_secret: CODEBERG_ACCESS_TOKEN
