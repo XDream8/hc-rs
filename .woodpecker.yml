@@ -10,7 +10,7 @@ steps:
     commands:
       - ${PACKAGE_MANAGER} update
       - ${PACKAGE_MANAGER} ${INSTALL_CMD} -q ${PACKAGE}
-      - rustup default stable
+      - rustup default nightly
       - rustup target add ${TARGET}
       - cargo build --profile optimized
       - tar -zcvf hc-rs-${TARGET}.tar.gz target/${TARGET}/optimized/hc-rs
