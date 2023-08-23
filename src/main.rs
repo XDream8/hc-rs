@@ -87,7 +87,7 @@ fn action(c: &Context) {
     let filename: String = c.string_flag("output").unwrap_or(String::from("hosts"));
 
     // -r flag
-    let rm_duplicate_lines: bool = c.bool_flag("rm_duplicate_lines");
+    let rm_duplicate_lines: bool = c.bool_flag("remove-duplicates");
     // -i/--ignore flag
     let ignore_fetching_errors: bool = c.bool_flag("ignore-errors");
 
