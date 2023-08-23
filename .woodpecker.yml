@@ -1,0 +1,49 @@
+steps:
+  build:
+    group: build
+    image: ${IMAGE}
+    when:
+      event: tag
+    environment:
+      - CARGO_TERM_COLOR=always
+      - CARGO_BUILD_TARGET=${TARGET}
+    commands:
+      - ${PACKAGE_MANAGER} update
+      - ${PACKAGE_MANAGER} ${INSTALL_CMD} -q ${PACKAGE}
+      - rustup default stable
+      - rustup target add ${TARGET}
+      - cargo build --profile optimized
+      - tar -zcvf hc-rs-${TARGET}.tar.gz target/${TARGET}/optimized/hc-rs
+      - target/${TARGET}/optimized/hc-rs -r -i -o hosts-$(date '+%d-%m-%Y')
+
+  publish:
+    group: publish
+    image: woodpeckerci/plugin-gitea-release
+    when:
+      event: tag
+    settings:
+      base_url: https://codeberg.org
+      files:
+        - "hc-rs-${TARGET}.tar.gz"
+        - "hosts"
+      file-exists: overwrite
+      api_key:
+        from_secret: CODEBERG_ACCESS_TOKEN
+      target: main
+      title: file-rs
+      skip_verify: true
+
+matrix:
+  include:
+    ## musl
+    - IMAGE: rust:alpine
+      TARGET: x86_64-unknown-linux-musl
+      PACKAGE_MANAGER: apk
+      INSTALL_CMD: add
+      PACKAGE: musl-dev
+    ## gnu/glibc
+    - IMAGE: rust:latest
+      TARGET: x86_64-unknown-linux-gnu
+      PACKAGE_MANAGER: apt
+      INSTALL_CMD: install
+      PACKAGE: gcc

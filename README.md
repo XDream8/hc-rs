@@ -42,10 +42,10 @@ $ hc-rs https://badmojr.github.io/1Hosts/Pro/hosts.txt https://hosts.oisd.nl
 
 ### removing duplicate lines
 
-use --rm_duplicate_lines(-rmd) flag to remove duplicate lines from the final file
+use --remove-duplicates(-r) flag to remove duplicate lines from the final file
 
 ```sh
-$ hc-rs -rmd
+$ hc-rs -r
 ```
 
 ### setting output filename
@@ -57,8 +57,24 @@ default filename is "hosts"
 $ hc-rs -o new-hosts
 ```
 
+### minimal
+
+use --minimal(-m) flag to create a small hosts file
+
+```sh
+$ hc-rs -m
+```
+
+### ignoring fetching errors
+
+use --ignore-errors(-i) flag to ignore fetching errors and don't exit
+
+```sh
+$ hc-rs -i https://example.com/example
+```
+
 ### aliasing in your shell config
 
 ```sh
-alias create-hosts='hc-rs -rmd https://badmojr.github.io/1Hosts/Pro/hosts.txt https://hosts.oisd.nl'
+alias create-hosts='hc-rs -r https://badmojr.github.io/1Hosts/Pro/hosts.txt https://hosts.oisd.nl'
 ```

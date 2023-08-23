@@ -64,8 +64,12 @@ fn main() {
 }
 
 fn action(c: &Context) {
-    // --minimal,-m
+    // -m/--minimal
     let minimal: bool = c.bool_flag("minimal");
+    // -r/--remove-duplicates flag
+    let rm_duplicate_lines: bool = c.bool_flag("remove-duplicates");
+    // -i/--ignore flag
+    let ignore_fetching_errors: bool = c.bool_flag("ignore-errors");
 
     // urls
     let urls: Vec<&str> = if !c.args.is_empty() {
@@ -85,11 +89,6 @@ fn action(c: &Context) {
 
     // set default output filename
     let filename: String = c.string_flag("output").unwrap_or(String::from("hosts"));
-
-    // -r flag
-    let rm_duplicate_lines: bool = c.bool_flag("remove-duplicates");
-    // -i/--ignore flag
-    let ignore_fetching_errors: bool = c.bool_flag("ignore-errors");
 
     // give info
     println!(
