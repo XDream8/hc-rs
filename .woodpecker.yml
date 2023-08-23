@@ -1,4 +1,19 @@
 steps:
+  check:
+    group: check
+    image: ${IMAGE}
+    environment:
+      - CARGO_TERM_COLOR=always
+      - CARGO_BUILD_TARGET=${TARGET}
+    commands:
+      - ${PACKAGE_MANAGER} update
+      - ${PACKAGE_MANAGER} ${INSTALL_CMD} -q ${PACKAGE}
+      - rustup default nightly
+      - rustup target add ${TARGET}
+      - rustup component add clippy
+      - cargo check
+      - cargo clippy
+
   build:
     group: build
     image: ${IMAGE}
