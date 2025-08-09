@@ -14,21 +14,15 @@ use std::env;
 // colored output
 use colored::*;
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 
 // http client
-use std::time::Duration;
-use ureq::{Agent, AgentBuilder};
+use ureq::Agent;
 
 use std::process::exit;
 
 // reusable lazy initialized HTTP CLIENT
-pub static HTTP_CLIENT: Lazy<Agent> = Lazy::new(|| {
-    AgentBuilder::new()
-        .timeout_read(Duration::from_secs(10))
-        .timeout_write(Duration::from_secs(10))
-        .build()
-});
+pub static HTTP_CLIENT: LazyLock<Agent> = LazyLock::new(Agent::new_with_defaults);
 
 fn main() {
     let args: Vec<String> = env::args().collect();

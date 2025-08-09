@@ -1,14 +1,12 @@
 use crate::HTTP_CLIENT;
-use ureq::{Error, Response};
+use ureq::Error;
 
-pub fn fetch(uri: &str) -> Result<String, Box<Error>> {
-    let resp: Response = HTTP_CLIENT.get(uri).call()?;
-
-    let mut body: String = String::new();
-
-    if let Err(err) = resp.into_reader().read_to_string(&mut body) {
-        Err(Box::new(err.into()))
-    } else {
-        Ok(body)
-    }
+pub fn fetch(uri: &str) -> Result<String, Error> {
+    HTTP_CLIENT
+        .get(uri)
+        .call()?
+        .body_mut()
+        .with_config()
+        .limit(25 * 1024 * 1024)
+        .read_to_string()
 }
