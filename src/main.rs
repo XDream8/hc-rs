@@ -36,9 +36,10 @@ fn main() -> Result<(), HcError> {
                 cli.urls.iter().map(|s| s.as_str()).collect()
             } else {
                 vec![
-            "https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt",
-            "https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt",
-        ]
+                    "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts",
+                    "https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt",
+                    "https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt",
+                ]
             };
 
             create_hosts_file(

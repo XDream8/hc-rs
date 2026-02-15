@@ -28,7 +28,8 @@ $ ./target/optimized/hc-rs
 
 ```sh
 $ hc-rs -h
-$ hc-rs <urls> <flags>
+$ hc-rs <flags> <urls>
+$ hc-rs <subcommand> ...
 ```
 
 ### creating a hosts file
@@ -42,11 +43,20 @@ $ hc-rs https://badmojr.github.io/1Hosts/Pro/hosts.txt https://hosts.oisd.nl
 
 ### removing duplicate lines
 
-use --remove-duplicates(-r) flag to remove duplicate lines from the final file
+use --remove-duplicates(-r) flag to remove duplicate lines from the downloaded content/hosts
 
 ```sh
 $ hc-rs -r
 ```
+
+### removing duplicate lines from a already created hosts file
+
+I added a subcommand just for this purpose
+
+```sh
+$ hc-rs rmd <files>
+```
+
 
 ### setting output filename
 
@@ -55,14 +65,6 @@ default filename is "hosts"
 
 ```sh
 $ hc-rs -o new-hosts
-```
-
-### minimal
-
-use --minimal(-m) flag to create a small hosts file
-
-```sh
-$ hc-rs -m
 ```
 
 ### ignoring fetching errors

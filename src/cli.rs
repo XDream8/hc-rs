@@ -26,7 +26,7 @@ pub struct CliArgs {
 
 #[derive(Subcommand, PartialEq)]
 pub enum Commands {
-    /// Remove duplicate lines from a file
+    /// Remove duplicate lines from file(s)
     #[command(arg_required_else_help = true)]
     #[clap(name = "rmd")]
     Rmd {
