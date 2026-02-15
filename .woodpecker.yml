@@ -1,38 +1,41 @@
+matrix:
+  include:
+    - IMAGE: rust:alpine
+      TARGET: x86_64-unknown-linux-musl
+      PKG_UPDATE: apk update
+      PKG_INSTALL: apk add --no-cache musl-dev
+    - IMAGE: rust:latest
+      TARGET: x86_64-unknown-linux-gnu
+      PKG_UPDATE: apt-get update
+      PKG_INSTALL: apt-get install -y gcc
+
 steps:
-  check:
-    group: check
+  test:
     image: ${IMAGE}
     environment:
-      - CARGO_TERM_COLOR=always
-      - CARGO_BUILD_TARGET=${TARGET}
+      CARGO_TERM_COLOR: always
     commands:
-      - ${PACKAGE_MANAGER} update
-      - ${PACKAGE_MANAGER} ${INSTALL_CMD} -q ${PACKAGE}
-      - rustup default nightly
+      - ${PKG_UPDATE}
+      - ${PKG_INSTALL}
       - rustup target add ${TARGET}
+      - cargo test --target ${TARGET}
       - rustup component add clippy
-      - cargo check
-      - cargo clippy
+      - cargo clippy --target ${TARGET} -- -D warnings
 
   build:
-    group: build
     image: ${IMAGE}
     when:
       event: tag
     environment:
-      - CARGO_TERM_COLOR=always
-      - CARGO_BUILD_TARGET=${TARGET}
+      CARGO_TERM_COLOR: always
     commands:
-      - ${PACKAGE_MANAGER} update
-      - ${PACKAGE_MANAGER} ${INSTALL_CMD} -q ${PACKAGE}
-      - rustup default nightly
+      - ${PKG_UPDATE}
+      - ${PKG_INSTALL}
       - rustup target add ${TARGET}
-      - cargo build --profile optimized
-      - tar -zcvf hc-rs-${TARGET}.tar.gz target/${TARGET}/optimized/hc-rs
-      - target/${TARGET}/optimized/hc-rs -r -i -o hosts-$(date '+%d-%m-%Y')
+      - cargo build --profile optimized --target ${TARGET}
+      - tar -zcvf file-rs-${TARGET}.tar.gz -C target/${TARGET}/optimized file-rs
 
   publish:
-    group: publish
     image: woodpeckerci/plugin-gitea-release
     when:
       event: tag
@@ -40,25 +43,7 @@ steps:
       base_url: https://codeberg.org
       files:
         - "hc-rs-${TARGET}.tar.gz"
-        - "hosts-*"
-      file-exists: overwrite
       api_key:
         from_secret: CODEBERG_ACCESS_TOKEN
-      target: main
-      title: file-rs
-      skip_verify: true
-
-matrix:
-  include:
-    ## musl
-    - IMAGE: rust:alpine
-      TARGET: x86_64-unknown-linux-musl
-      PACKAGE_MANAGER: apk
-      INSTALL_CMD: add
-      PACKAGE: musl-dev
-    ## gnu/glibc
-    - IMAGE: rust:latest
-      TARGET: x86_64-unknown-linux-gnu
-      PACKAGE_MANAGER: apt
-      INSTALL_CMD: install
-      PACKAGE: gcc
+      title: ${CI_COMMIT_TAG}
+      # skip_verify: true # Only use if Codeberg SSL is flaky
