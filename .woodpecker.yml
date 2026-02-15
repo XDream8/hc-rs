@@ -33,7 +33,7 @@ steps:
       - ${PKG_INSTALL}
       - rustup target add ${TARGET}
       - cargo build --profile optimized --target ${TARGET}
-      - tar -zcvf file-rs-${TARGET}.tar.gz -C target/${TARGET}/optimized file-rs
+      - tar -zcvf hc-rs-${TARGET}.tar.gz -C target/${TARGET}/optimized hc-rs
 
   publish:
     image: woodpeckerci/plugin-gitea-release
