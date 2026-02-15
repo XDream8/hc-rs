@@ -1,6 +1,6 @@
 [package]
 name = "hc-rs"
-version = "0.3.6"
+version = "0.3.7"
 authors = ["XDream8 <WolfsDream@proton.me>"]
 edition = "2021"
 license = "MIT"
