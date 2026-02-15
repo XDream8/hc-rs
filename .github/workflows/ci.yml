@@ -1,6 +1,8 @@
 name: CI & Release
 
 on:
+  # This allows manual triggering
+  workflow_dispatch:
   push:
     branches: [ main ]
   create:
