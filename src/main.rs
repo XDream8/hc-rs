@@ -1,167 +1,175 @@
+mod cli;
+mod error;
 mod fetch;
 mod rmd;
 
+use clap::Parser;
+use error::HcError;
+
+use cli::CliArgs;
 use fetch::fetch;
-use rmd::remove_duplicates;
+
+use std::collections::HashSet;
 
 // for file operations
 use std::{fs::File, io::Write};
-
-// for cli-args
-use seahorse::{App, Context, Flag, FlagType};
-use std::env;
-
-// colored output
-use colored::*;
 
 use std::sync::LazyLock;
 
 // http client
 use ureq::Agent;
 
-use std::process::exit;
+use crate::cli::Commands;
+use crate::rmd::remove_duplicates;
 
 // reusable lazy initialized HTTP CLIENT
 pub static HTTP_CLIENT: LazyLock<Agent> = LazyLock::new(Agent::new_with_defaults);
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
+fn main() -> Result<(), HcError> {
+    let cli: CliArgs = CliArgs::parse();
 
-    let app = App::new(env!("CARGO_PKG_NAME"))
-        .description(env!("CARGO_PKG_DESCRIPTION"))
-        .version(env!("CARGO_PKG_VERSION"))
-        .usage(format!("{} [urls] [args]", env!("CARGO_PKG_NAME")))
-        .action(action)
-        // flags
-        .flag(
-            Flag::new("ignore-errors", FlagType::Bool)
-                .description("ignore fetching errors and don't exit")
-                .alias("i"),
-        )
-        .flag(
-            Flag::new("output", FlagType::String)
-                .description("name of the output file")
-                .alias("o"),
-        )
-        .flag(
-            Flag::new("remove-duplicates", FlagType::Bool)
-                .description("remove duplicate lines from the new hosts file")
-                .alias("r"),
-        )
-        .flag(
-            Flag::new("minimal", FlagType::Bool)
-                .description("create a minimal hosts file")
-                .alias("m"),
-        );
-
-    app.run(args);
-}
-
-fn action(c: &Context) {
-    // -m/--minimal
-    let minimal: bool = c.bool_flag("minimal");
-    // -r/--remove-duplicates flag
-    let rm_duplicate_lines: bool = c.bool_flag("remove-duplicates");
-    // -i/--ignore flag
-    let ignore_fetching_errors: bool = c.bool_flag("ignore-errors");
-
-    // urls
-    let urls: Vec<&str> = if !c.args.is_empty() {
-        c.args.iter().map(|url| url.as_str()).collect()
-    } else if minimal {
-        // minimal hosts
-        vec!["https://badmojr.github.io/1Hosts/Pro/hosts.txt"]
-    } else {
-        // default hosts
-        vec![
-            "https://badmojr.github.io/1Hosts/Pro/hosts.txt",
-            "https://hosts.oisd.nl",
+    match &cli.command {
+        Some(Commands::Rmd { files }) => Ok(files.iter().try_for_each(remove_duplicates)?),
+        _ => {
+            // Determine URLs
+            let urls: Vec<&str> = if !cli.urls.is_empty() {
+                cli.urls.iter().map(|s| s.as_str()).collect()
+            } else {
+                vec![
             "https://raw.githubusercontent.com/notracking/hosts-blocklists/master/hostnames.txt",
             "https://raw.githubusercontent.com/jerryn70/GoodbyeAds/master/Hosts/GoodbyeAds.txt",
         ]
-    };
+            };
 
-    // set default output filename
-    let filename: String = c.string_flag("output").unwrap_or(String::from("hosts"));
+            create_hosts_file(
+                cli.remove_duplicate_lines,
+                cli.output_file,
+                cli.ignore_fetching_errors,
+                &urls,
+            )
+        }
+    }
+}
 
+fn create_hosts_file(
+    remove_duplicate_lines: bool,
+    output_file: String,
+    ignore_fetching_errors: bool,
+    hosts: &[&str],
+) -> Result<(), HcError> {
     // give info
     println!(
-        "Filename: {}\nMinimal: {}\nRemove Duplicates: {}",
-        filename.blue(),
-        minimal.to_string().yellow(),
-        rm_duplicate_lines.to_string().yellow()
+        "Filename: {}\nRemove Duplicates: {}",
+        output_file, remove_duplicate_lines
     );
 
-    std::thread::scope(|s| {
-        // create file
-        if let Err(err) = File::create(&filename) {
-            eprintln!("Error encountered while creating output file: {}", err);
-            exit(1);
-        }
+    // Create output file
+    File::create(&output_file).map_err(|e| HcError::FileCreation {
+        filename: output_file.clone(),
+        source: e,
+    })?;
 
-        let fname: &String = &filename;
+    println!("Starting downloads(threaded)");
 
-        // info
-        println!("{}", "Starting downloads(threaded)".blue().bold());
+    // Fetch in parallel
+    let fetched_content = fetch_all_hosts(hosts, ignore_fetching_errors)?;
 
-        for uri in urls.iter() {
-            s.spawn(move || {
-                match fetch(uri) {
-                    // if fetched body successfully
-                    Ok(body) => {
-                        println!(
-                            "{} ({}) {}",
-                            "fetched".green().bold(),
-                            uri.yellow(),
-                            "successfully".green().bold()
-                        );
-
-                        // open file as read-write(managing errors)
-                        let mut file: File = File::options()
-                            .append(true)
-                            .open(fname)
-                            .unwrap_or_else(|err| {
-                                eprintln!("Couldn't open output file as read-write: {}", err);
-                                exit(1);
-                            });
-
-                        // write to file(managing errors)
-                        if let Err(err) = file.write_all(body.as_bytes()) {
-                            eprintln!("Couldn't write fetched content to file: {}", err);
-                            exit(1);
-                        }
-                    }
-                    // manage fetching errors
-                    Err(err) => {
-                        eprintln!(
-                            "{} ({}) {}: {}",
-                            "fetching".red().bold(),
-                            uri.yellow(),
-                            "failed".red().bold(),
-                            err.to_string().red().bold(),
-                        );
-                        if !ignore_fetching_errors {
-                            exit(1);
-                        }
-                    }
-                };
-            });
-        }
-    });
+    // open file as read-write
+    let mut file = File::options()
+        .append(true)
+        .open(&output_file)
+        .map_err(|e| HcError::FileWrite {
+            filename: output_file.to_string(),
+            source: e,
+        })?;
 
     // remove duplicates if -rmd flag is used
-    if rm_duplicate_lines && urls.len() == 1 {
-        println!(
-            "{}",
-            "We only fetched 1 hosts file, no need to remove duplicates".blue()
-        );
-    } else if rm_duplicate_lines {
-        println!("{}", "Removing duplicate lines".blue());
-        if let Err(err) = remove_duplicates(&filename) {
-            eprintln!("Error encountered while removing duplicates: {}", err);
-            exit(1);
+    if remove_duplicate_lines && hosts.len() == 1 {
+        println!("We only fetched 1 hosts file, no need to remove duplicates");
+    } else if remove_duplicate_lines {
+        println!("Removing duplicate lines and writing to file");
+
+        let mut filtered: HashSet<String> = HashSet::new();
+
+        for content in fetched_content {
+            let content_by_lines: Vec<String> = content.lines().map(String::from).collect();
+
+            for line in content_by_lines {
+                if filtered.contains(&line) {
+                    continue;
+                } else {
+                    file.write_all(line.as_bytes())
+                        .map_err(|e| HcError::FileWrite {
+                            filename: output_file.to_string(),
+                            source: e,
+                        })?;
+                    file.write_all(b"\n").map_err(|e| HcError::FileWrite {
+                        filename: output_file.to_string(),
+                        source: e,
+                    })?;
+
+                    filtered.insert(line);
+                }
+            }
+        }
+    } else {
+        println!("Writing to file!");
+
+        for data in fetched_content {
+            file.write_all(data.as_bytes())
+                .map_err(|e| HcError::FileWrite {
+                    filename: output_file.to_string(),
+                    source: e,
+                })?;
         }
     }
 
-    println!("{}", "Your hosts file is ready!".green().bold())
+    println!("Your hosts file is ready!");
+
+    Ok(())
+}
+
+fn fetch_all_hosts(urls: &[&str], ignore_errors: bool) -> Result<Vec<String>, HcError> {
+    let mut fetched_content = Vec::new();
+    let mut errors = Vec::new();
+
+    std::thread::scope(|s| {
+        let mut handles = vec![];
+
+        // Spawn all threads
+        for uri in urls.iter() {
+            let handle = s.spawn(move || fetch(uri));
+            handles.push((uri, handle));
+        }
+
+        // Wait for all threads and collect results
+        for (uri, handle) in handles {
+            match handle.join() {
+                Ok(Ok(body)) => {
+                    println!("fetched '{}' successfully", uri,);
+                    fetched_content.push(body);
+                }
+                Ok(Err(err)) => {
+                    let err = HcError::Fetch {
+                        url: uri.to_string(),
+                        source: Box::new(err),
+                    };
+                    eprintln!("fetching '{}' failed: {}", uri, err);
+                    errors.push(err);
+                }
+                Err(_) => {
+                    let err = HcError::Thread(format!("Thread for {} panicked", uri));
+                    eprintln!("{}", err);
+                    errors.push(err);
+                }
+            }
+        }
+    });
+
+    // Check for errors AFTER all threads complete
+    if !errors.is_empty() && !ignore_errors {
+        return Err(errors.into_iter().next().unwrap());
+    }
+
+    Ok(fetched_content)
 }

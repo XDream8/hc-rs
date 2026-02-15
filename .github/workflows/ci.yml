@@ -1,0 +1,75 @@
+name: CI & Release
+
+on:
+  push:
+    branches: [ main ]
+  create:
+    tags: [ 'v*' ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: file-rs-x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact_name: file-rs-x86_64-unknown-linux-musl
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (musl)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: clippy
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Test & Lint
+        run: |
+          cargo test --target ${{ matrix.target }}
+          cargo clippy --target ${{ matrix.target }} -- -D warnings
+
+      - name: Build
+        if: startsWith(github.ref, 'refs/tags/')
+        run: cargo build --profile optimized --target ${{ matrix.target }}
+
+      - name: Package
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd target/${{ matrix.target }}/optimized
+          tar -zcvf ../../../${{ matrix.artifact_name }}.tar.gz file-rs
+
+      - name: Upload Artifacts
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}.tar.gz
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "**/*.tar.gz"
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true

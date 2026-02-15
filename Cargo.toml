@@ -8,13 +8,10 @@ readme = "README.md"
 repository = "https://github.com/XDream8/hc-rs"
 description = "create hosts file"
 
-[features]
-dumb_terminal = ["colored/no-color"]
-
 [dependencies]
-colored = "3"
 ureq = "3.0.12"
-seahorse = "2.2"
+thiserror = "2.0.12"
+clap = { version = "4.5.58", features = ["derive"] }
 
 [profile.release]
 lto = "thin"
