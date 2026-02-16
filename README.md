@@ -3,8 +3,6 @@
     <p>fetch and merge multiple hosts files</p>
 </div>
 
-this is a **WIP**
-
 ## whats done
 
 - [x] fetching hosts files
@@ -12,8 +10,12 @@ this is a **WIP**
 - [x] removing duplicate lines
 - [x] cli options
 - [x] colored output messages
-- [ ] configuration file
 - [ ] replace with /etc/hosts(i think this should be done manually though)
+
+## install using **cargo**
+```sh
+$ cargo install hc-rs
+```
 
 ## building from git source
 
