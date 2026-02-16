@@ -64,16 +64,16 @@ fn create_hosts_file(
         output_file, remove_duplicate_lines
     );
 
-    // Create output file
+    println!("Starting downloads(threaded)");
+    // Fetch in parallel
+    let fetched_content = fetch_all_hosts(hosts, ignore_fetching_errors)?;
+
+    // Create output file after fetching content
+    // prevents unwanted issues like the output file being empty after failing downloads.
     File::create(&output_file).map_err(|e| HcError::FileCreation {
         filename: output_file.clone(),
         source: e,
     })?;
-
-    println!("Starting downloads(threaded)");
-
-    // Fetch in parallel
-    let fetched_content = fetch_all_hosts(hosts, ignore_fetching_errors)?;
 
     // open file as read-write
     let mut file = File::options()
