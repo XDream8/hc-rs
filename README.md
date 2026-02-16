@@ -12,12 +12,20 @@
 - [x] colored output messages
 - [ ] replace with /etc/hosts(i think this should be done manually though)
 
-## install using **cargo**
+## installation
+
+### prebuilt binaries can be found in github and codeberg releases
+Only binaries for x86_64-unknown-linux-gnu and x86_64-unknown-linux-musl are available for now.\
+These binaries are created using github actions and woodpecker ci.
+- [Github Releases](https://github.com/XDream8/hc-rs/releases)
+- [Codeberg Releases](https://codeberg.org/XDream8/hc-rs/releases)
+
+### install using **cargo**
 ```sh
 $ cargo install hc-rs
 ```
 
-## building from git source
+### building from git source
 
 ```
 $ git clone https://github.com/XDream8/hc-rs
