@@ -27,7 +27,7 @@ $ cargo install hc-rs
 
 ### building from git source
 
-```
+```sh
 $ git clone https://github.com/XDream8/hc-rs
 $ cd hc-rs
 $ cargo build --profile optimized
